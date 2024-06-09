@@ -1,9 +1,9 @@
 require('dotenv').config();
 
-const express = require('express'); //Строка 1
-const app = express(); //Строка 2
+const express = require('express');
+const app = express();
 
-const PORT = process.env.SERVER_PORT || 5000; //Строка 3
+const PORT = process.env.SERVER_PORT || 5000;
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');

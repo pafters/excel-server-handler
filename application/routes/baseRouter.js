@@ -6,6 +6,5 @@ const UserRouter = require('./UserRouter')
 
 router.use('/files', FileRouter);
 router.use('/users', UserRouter)
-// router.use('/admin', AdminRouter);
 
 module.exports = router;

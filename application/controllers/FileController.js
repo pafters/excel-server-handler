@@ -1,10 +1,8 @@
-const path = require('path');
-const fs = require('fs');
 const FormData = require('form-data');
 
 const FileManager = require("../modules/FileManager");
 const { checkToken } = require('../modules/UserManager');
-const { sendPost, sendRequestToServerB } = require('../modules/router');
+const { addToMain, deleteDuplicates } = require('../modules/router');
 
 class FileController {
 
@@ -13,8 +11,6 @@ class FileController {
     }
 
     async fileUpload(req, res) {
-        FileManager.status = {};
-        FileManager.tableName = null;
         const token = req.headers.authorizationtoken;
         const tokenInfo = checkToken(token);
         if (tokenInfo.status === 200) {
@@ -27,24 +23,19 @@ class FileController {
             const formData = new FormData();
             formData.append('file', uploadedFile.buffer, { filename: uploadedFile.originalname });
             try {
-                FileManager.tableName = uploadedFile.originalname;
-                const answer = await sendPost('files/upload-file', formData,
-                    {
-                        'Content-Type': 'multipart/form-data',
-                    }
-                );
+                const answer = await deleteDuplicates(formData);
                 if (answer.data) {
-                    const groups = answer.data.groups;
+                    const groups = answer?.data?.groups;
 
                     const file = await FileManager.fileUpload(groups, uploadedFile, MainTableStatus, false);
-                    
-                    FileManager.status = {};
-                    FileManager.tableName = null;
-                    res.status(file.status).send(file.msg);
+                    if (file?.msg?.tableInfo?.tableName) {
+                        const tableName = file?.msg?.tableName;
+                        await FileManager.saveCash(answer?.data?.cash, tableName);
+                        res.status(file.status).send(file.msg);
+                    }
+
                 } else res.status(500).send({ err: 'Что то пошло не так' });
             } catch (e) {
-                FileManager.tableName = null;
-                FileManager.status = {}
                 console.log(e);
             }
         } else res.status(tokenInfo.status).send({});
@@ -111,8 +102,6 @@ class FileController {
     }
 
     async addToMainTable(req, res) {
-        FileManager.status = {};
-        FileManager.tableName = null;
         const token = req?.headers?.authorizationtoken;
         if (token) {
             const tokenInfo = checkToken(token);
@@ -121,38 +110,29 @@ class FileController {
                 if (tableNameMainInfo.msg?.files[0]) {
                     const tableNameForeign = req.body.tableName;
                     const tableNameMain = tableNameMainInfo.msg.files[0];
-                    FileManager.tableName = tableNameForeign.substring(0, 7) + '... -> ' + tableNameMain.substring(0, 7) + '...';
                     const answerTableForeign = FileManager.convertExcelToJsonByFilePath(tableNameForeign, false);
                     const answerMainTable = FileManager.convertExcelToJsonByFilePath(tableNameMain, true);
 
                     const tableDataForeign = answerTableForeign.msg.tableData;
                     const tableDataMain = answerMainTable.msg.tableData;
                     try {
-                        const answer = await sendPost('files/add-to-main-table',
+                        const answer = await addToMain(
                             {
-                                mainTable: {
-                                    tableNameMain,
-                                    tableDataMain
-                                },
-                                foreignTable: {
-                                    tableNameForeign,
-                                    tableDataForeign
-                                }
+                                tableNameMain,
+                                tableDataMain
                             },
                             {
+                                tableNameForeign,
+                                tableDataForeign
                             }
                         );
                         if (answer.data) {
                             const groups = answer.data?.groups;
 
                             const file = await FileManager.fileUpload(groups, true, tableNameMain, false, true);
-                            FileManager.tableName = null;
-                            FileManager.status = {}
                             res.status(file.status).send(file.msg);
                         }
                     } catch (e) {
-                        FileManager.tableName = null;
-                        FileManager.status = {}
                         console.log(e);
                     }
                 } else res.status(500).send({ err: 'Главная таблица не найдена' })
@@ -178,27 +158,6 @@ class FileController {
         } else res.status(500).send({ err: 'Ошибка авторизации. Сессия прервана' });
     }
 
-    /* ПРО СТАТУС ОБРАБОТКИ ТАБЛИЦ */
-
-    async updateHandlerStatus(req, res) {
-        const process = req.body.process;
-        FileManager.status = {
-            tableName: FileManager.tableName,
-            process: process
-        }
-        res.status(200).send({});
-    }
-
-
-    async getHadlerStatus(req, res) {
-        const token = req?.headers?.authorizationtoken;
-        if (token) {
-            const tokenInfo = checkToken(token);
-            if (tokenInfo.status === 200) {
-                res.status(200).send({ status: FileManager.status });
-            } else res.status(tokenInfo.status).send(tokenInfo.msg);
-        } else res.status(500).send({ err: 'Ошибка авторизации. Сессия прервана' });
-    }
 }
 
 module.exports = new FileController();

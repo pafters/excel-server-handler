@@ -19,15 +19,12 @@ class FileManager {
         this.folderMain = 'data/main'
         this.filePath = path.join(__dirname, '../../data');
         this.filePathMain = path.join(__dirname, '../../data/main')
-        this.status = {};
     }
 
     saveCash = async (cash, name) => {
         try {
             const jsonString = JSON.stringify(cash);
-
-            const file = fs.writeFileSync(`cash/${name}.json`, jsonString)
-            console.log(`Объект успешно сохранен в файл ${name}.json`);
+            const data = await fs.writeFileSync(`cash/${name}.json`, jsonString)
             return true;
         } catch (e) {
             console.error(e);
@@ -56,17 +53,13 @@ class FileManager {
         }
     }
 
-    getTableGroups = () => {
-        return [];
-    }
-
     getUnitListFromStr = (str) => {
         const words = str.split(' ');
         let result = [];
         for (let i = 0; i < words.length; i++) {
             const word = words[i];
-            let someUnit = null;
-            let isDublicate = this.units.some((unit) => {
+            
+            this.units.some((unit) => {
                 if (
                     (word.toLowerCase().indexOf(unit) >= 0)
                     && ((((word.length > unit.length && (!isNaN(parseInt(word[0]))
@@ -83,6 +76,7 @@ class FileManager {
                     }
 
                     else if (
+                        (words[i - 1]) &&
                         (!isNaN(parseInt(words[i - 1][0])) || (!isNaN(parseInt(words[i - 1][1])) && words[i - 1][0] === '('))
                         && isNaN(parseInt(word[0])))
                         if (!result.find((el) => el.indexOf(words[i - 1]) >= 0)) {
@@ -156,7 +150,7 @@ class FileManager {
         let tableName = isAddToMain ? uploadedFile : `${uploadedFile?.originalname?.replace(/\./g, '')}-${Date.now()}`;
         const path2 = `${!MainTableStatus ? (this.folderMain + '/' + tableName + '.xlsx') : (this.folder + '/' + tableName + '.xlsx')}`
 
-        const tableInfo = newWorkbook.xlsx.writeFile(path2).then(() => {
+        const tableInfo = await newWorkbook.xlsx.writeFile(path2).then(() => {
             return {
                 folder: MainTableStatus ? this.folderMain : this.folder,
                 tableName: tableName + '.xlsx'
