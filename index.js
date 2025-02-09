@@ -10,14 +10,12 @@ const path = require('path');
 const fileUpload = require('express-fileupload');
 
 
-const baseRouter = require('./application/routes/baseRouter');
+const baseRouter = require('./application/routes');
 
 app.use(cors({
-    'allowedHeaders': ['sessionId', 'Content-Type', 'AuthorizationToken'],
-    'exposedHeaders': ['sessionId'],
-    'origin': '*',
-
-    'methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    'allowedHeaders': ['Content-Type'],
+    'origin': 'http://localhost:3000',
+    'methods': 'GET,POST',
     'preflightContinue': false
 }));
 
